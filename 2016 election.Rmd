@@ -1,5 +1,7 @@
 ---
 title: "Who voted for Trump? Race and class"
+author: Daniel J. Hicks
+email: hicks.daniel.j@gmail.com
 ---
 
 <style type="text/css">
