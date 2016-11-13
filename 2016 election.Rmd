@@ -1,0 +1,147 @@
+---
+title: "Who voted for Trump? Race and class"
+---
+
+<style type="text/css">
+.table {
+
+    width: 40%;
+
+}
+</style>
+
+Since Tuesday, there's been a lot of discussion about who voted for Trump.  Several people have pointed [the NYT exit poll results](http://www.nytimes.com/interactive/2016/11/08/us/politics/election-exit-polls.html?_r=0) to try and argue that, say, Trump voters were affluent rather than working class.  This argument commits a [base rate fallacy](https://en.wikipedia.org/wiki/Base_rate_fallacy):  NYT reports the probability that someone voted for Clinton or Trump given that they're in a specific demographic group; but the argument is talking about the probability that someone is in a group given that they voted for Trump.  
+
+It turns out that [CNN has exit polling data available that let us avoid this fallacy](http://edition.cnn.com/election/results/exit-polls).  CNN reports the same probabilities as NYT (probability of voting for Clinton given white, for example), *but also* reports marginal probabilities for the demographic groups (the probability of being white, for example).  In this analysis, I'm going to use R to reorganize the data in the table "education and race".  
+
+NB  The website doesn't obvious state whether these exit polls were conducted as a simple random sample (e.g., talking to every 15th person who walked out of the polling place) or a weighted sample (e.g., talking to more members of minority groups, in an effort to get a sample that is equally informative about both the majority and minority).  **Here I'm going to assume the exit polls are a simple random sample.**
+
+First we need to load an R library and enter the data.  I'm going to do it manually.  
+```{r}
+library(tidyverse)
+library(knitr)
+
+## The demographic groups
+demographic.vec = c('white college', 
+					'white w/o college', 
+					'poc college', 
+					'poc w/o college')
+
+## The data from the CNN table
+vote.by.er.wide = tibble(demographic = factor(demographic.vec, 
+											  levels = demographic.vec, 
+										  ordered = TRUE), 
+						 demographic.dist = c(.37, .34, .13, .16),
+						 clinton.margin = c(.45, .28, .71, .75), 
+						 trump.margin = c(.49, .67, .23, .20))
+
+## CNN reported their table in "wide" format; we'll make it long
+vote.by.er = vote.by.er.wide %>%
+	mutate(Clinton = clinton.margin * demographic.dist, 
+		   Trump = trump.margin * demographic.dist) %>%
+	gather(key = candidate, value = perc.voters, Clinton, Trump)
+```
+
+The first plot shows the percentage of all voters (strictly, all respondents to the exit poll) who supported Clinton and Trump, divided out into the four demographic groups:  "white college graduates," "whites no degree," "non-whites college grads,", and "non-whites no degree." For precision, I've replaced "no degree" with "w/o college" in my labels; and for brevity I've used "poc," as in "person of color," in place of "non-whites." (Note that Clinton supporters are in red here, because I'm too lazy to reorder the colors.)
+
+```{r}
+ggplot(vote.by.er, aes(demographic, perc.voters, fill = candidate)) + 
+	geom_bar(stat = 'identity', position = 'dodge') + 
+	scale_fill_brewer(palette = 'Set1') +
+	scale_y_continuous(labels = scales::percent)
+```
+
+Here's what I see in this plot:  
+
+- Whites with college degrees were fairly closely split between Clinton and Trump. They favored Trump, but not by much.  
+- The other demographic groups were much more strongly split.  Whites without college degrees favored Trump, while people of color favored Clinton.  
+- There were many more white voters than person of color voters.  
+
+This first plot basically just reports the data available in the CNN table.  For the second plot, let's turn things around:  what percentage of Trump supporters were white people without college degrees?  (Note that the color scheme is different here, again because I'm too lazy to change things up.) 
+
+```{r}
+ggplot(vote.by.er, aes(candidate, perc.voters, fill = demographic)) + 
+	geom_bar(stat = 'identity') + 
+	scale_fill_brewer(palette = 'Set1') +
+	scale_y_continuous(labels = scales::percent)
+```
+
+The height of the two bars isn't normalized; in CNN's exit polls, Clinton received support from 47.4% of respondents, while Trump was supported by 47.1% of respondents.  So both bars top out at a bit under 50%, and Clinton's bar is very slightly tall; but that difference could easily be invisible.  
+
+```{r}
+vote.by.er %>% group_by(candidate) %>% 
+	summarize(perc.voters = sum(perc.voters) * 100) %>%
+	kable
+```
+
+This plot makes it immediately obvious that the plurality of Trump's support came from whites without college degrees; indeed, the table below shows that nearly half of Trump's support came from this group.  Trump also got a substantial amount of support from whites with college degrees, but it was the strong split among whites without college degrees that got him the election.  
+
+```{r}
+vote.by.er %>% filter(candidate == 'Trump') %>% 
+	mutate(tot = sum(perc.voters), 
+		   perc.voters = perc.voters / tot * 100) %>%
+	select(demographic, perc.voters) %>%
+	kable(digits = 0)
+```
+
+What about income?  For that we need another set of data; I'll use the table titled "income" that has three income brackets:  under $50k, $50k-$100k, and more than $100k.  
+
+```{r}
+income.vec = c('<50k', '50-100k', '>100k')
+## The data from the CNN table
+vote.by.income.wide = tibble(income = factor(income.vec, 
+											  levels = income.vec, 
+										  ordered = TRUE), 
+						 income.dist = c(.36, .31, .33),
+						 clinton.margin = c(.52, .46, .47),
+						 trump.margin = c(.41, .50, .48))
+
+## CNN reported their table in "wide" format; we'll make it long
+vote.by.income = vote.by.income.wide %>%
+	mutate(Clinton = clinton.margin * income.dist, 
+		   Trump = trump.margin * income.dist) %>%
+	gather(key = candidate, value = perc.voters, Clinton, Trump)
+```
+
+```{r}
+ggplot(vote.by.income, aes(income, perc.voters, fill = candidate)) + 
+	geom_bar(stat = 'identity', position = 'dodge') + 
+	scale_fill_brewer(palette = 'Set1') +
+	scale_y_continuous(labels = scales::percent)
+```
+
+The first plot shows that people with incomes below $50,000 per year tended to favor Clinton, although the split isn't sharp; the other two income brackets favored Trump, but only very slightly.  
+
+```{r}
+ggplot(vote.by.income, aes(candidate, perc.voters, fill = income)) + 
+	geom_bar(stat = 'identity') + 
+	scale_fill_brewer(palette = 'Set1') +
+	scale_y_continuous(labels = scales::percent)
+```
+
+After looking the race-education plots, the first thing that strikes me here is that Trump's bar is visibly shorter than Clinton's.  Indeed, it's a difference of more than 2 percent points.  
+
+```{r}
+vote.by.income %>% group_by(candidate) %>%
+	summarize(perc.voters = sum(perc.voters) * 100) %>%
+	kable(digits = 1)
+```
+
+Why is there a bigger difference here than in the race-education breakdown?  I'm genuinely not sure.  The only thing I can think of is that maybe more Trump voters declined to state their income, and those NAs aren't in this plot.  But CNN gives "24537 respondents" under both tables, and the percentages add up to 100%, which suggests there were no NAs.  
+
+In any case, we don't see Trump receiving an especially large chunk of his support from any of these three income groups.  Instead, his support was split very evenly here.  
+
+```{r}
+vote.by.income %>% filter(candidate == 'Trump') %>% 
+	mutate(tot = sum(perc.voters), 
+		   perc.voters = perc.voters / tot * 100) %>%
+	select(income, perc.voters) %>%
+	kable(digits = 1)
+```
+
+All together, it seems to me entirely reasonable to call Trumpism a white working-class phenomenon, though "working class" shouldn't be understood narrowly in terms of income.  Many people without college degrees work in skilled labor and trades, such as [plumbing](http://www.payscale.com/research/US/Job=Plumber/Hourly_Rate), [electrical](http://www.payscale.com/research/US/Job=Electrician/Hourly_Rate), [auto repair](http://www.payscale.com/research/US/Job=Automotive_Service_Technician_%2F_Mechanic/Hourly_Rate), or [truck driving](http://www.payscale.com/research/US/Job=Automotive_Service_Technician_%2F_Mechanic/Hourly_Rate).  According to the Payscale links, the median salaries in these fields are right around $50k per year, meaning about half of the people in these fields are in the 50-100k income block.  It seems entirely plausible to me that Trump's support came, by and large, from white people who are either economically insecure — people working at Wal-Mart, or surviving on disability — or have relatively secure careers in skilled labor but have seen their communities ravaged by deindustrialization.  
+
+This doesn't mean that race and racism are irrelevant.  Trump received very little support from people of color; `r {.25*.84 / (.25*.84 + .70*.34)} %>% scales::percent()` of his supporters think that "illegal immigrants" should be deported; only `r {.48*.22 / (.43*.74 + .48*.22)} %>% scales::percent()` of his supporters think that the criminal justice system treats blacks unfairly.  This suggests that understanding Trumpism requires an intersectional analysis of race, class, and the urban-rural divide.  
+
+
+
