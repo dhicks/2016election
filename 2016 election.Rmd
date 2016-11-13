@@ -145,5 +145,30 @@ All together, it seems to me entirely reasonable to call Trumpism a white workin
 
 This doesn't mean that race and racism are irrelevant.  Trump received very little support from people of color; `r {.25*.84 / (.25*.84 + .70*.34)} %>% scales::percent()` of his supporters think that "illegal immigrants" should be deported; only `r {.48*.22 / (.43*.74 + .48*.22)} %>% scales::percent()` of his supporters think that the criminal justice system treats blacks unfairly.  This suggests that understanding Trumpism requires an intersectional analysis of race, class, and the urban-rural divide.  
 
+**Update**:  Carly asked about the gender breakdown.  
 
+```{r}
+## The data from the CNN table
+vote.by.gender.wide = tibble(gender = factor(c('men', 'women')), 
+						 gender.dist = c(.48, .52),
+						 clinton.margin = c(.41, .54),
+						 trump.margin = c(.53, .42))
 
+## CNN reported their table in "wide" format; we'll make it long
+vote.by.gender = vote.by.gender.wide %>%
+	mutate(Clinton = clinton.margin * gender.dist, 
+		   Trump = trump.margin * gender.dist) %>%
+	gather(key = candidate, value = perc.voters, Clinton, Trump)
+
+ggplot(vote.by.gender, aes(gender, perc.voters, fill = candidate)) + 
+	geom_bar(stat = 'identity', position = 'dodge') + 
+	scale_fill_brewer(palette = 'Set1') +
+	scale_y_continuous(labels = scales::percent)
+
+ggplot(vote.by.gender, aes(candidate, perc.voters, fill = gender)) + 
+	geom_bar(stat = 'identity') + 
+	scale_fill_brewer(palette = 'Set1') +
+	scale_y_continuous(labels = scales::percent)
+```
+
+The first plot shows that men tended to favor Trump and women tended to favor Clinton.  In both cases the difference is a bit more than 5 percentage points, which is larger than the trend for whites with a college degree but smaller than the other race-education trends.  The second plot shows that Trump's supporters are roughly equally men and women, while about 60% of Clinton's supporters were women.  Given Trump bragging about sexually harassing women, I'm surprised he got so much support from women.  
